@@ -24,14 +24,14 @@ import androidx.core.content.res.ResourcesCompat;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
-	private static final int SAMPLE_RATE = 44100;
+	private static final int SAMPLE_RATE = 48000;
 	private static final float SEC_PER_SAMPLEPOINT = 1.0f / SAMPLE_RATE;
+	private static final int SOUND_TIME = 3;
 	private static final int AMP = 4000;
 	private static final int DO = 262 * 2;
 	private static final int RE = 294 * 2;
@@ -54,9 +54,22 @@ public class MainActivity extends AppCompatActivity {
 	private static final int HEXSOMI = 12;
 	private static final int HEXRARE = 13;
 	private static final int HEXSIRE = 14;
-	private static final Map<Integer, short[]> mSineWaves;
+	final int bufferSizeInBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT);
+	AudioTrack mAudioTrack = new AudioTrack.Builder()
+			.setAudioAttributes(new AudioAttributes.Builder()
+					.setUsage(AudioAttributes.USAGE_UNKNOWN)
+					.setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
+					.build())
+			.setAudioFormat(new AudioFormat.Builder()
+					.setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+					.setSampleRate(SAMPLE_RATE)
+					.setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+					.build())
+			.setBufferSizeInBytes(bufferSizeInBytes)
+			.build();
+	private static final Map<Integer, float[]> mSineWaves;
 	static {
-		Map<Integer, short[]> tmpmap = new HashMap<Integer, short[]>();
+		Map<Integer, float[]> tmpmap = new HashMap<Integer, float[]>();
 		tmpmap.put(  280, createSineWave(  280, AMP));
 		tmpmap.put(  400, createSineWave(  400, AMP));
 		tmpmap.put(  800, createSineWave(  800, AMP));
@@ -101,8 +114,6 @@ public class MainActivity extends AppCompatActivity {
 			requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 2222);
 		}
 
-		final int bufferSizeInBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
-
 		/* 再生ボタン押下イベント */
 		View.OnClickListener listner = v -> {
 			/* ボタン未選択なら、再生しない。 */
@@ -119,36 +130,21 @@ public class MainActivity extends AppCompatActivity {
 				TLog.d("FREQS={0}[hz]", FREQ);
 
 				/* AudioTrack停止 */
-				TLog.d("AudioTrack初期化");
-				TLog.d("new AudioTrack");
-				AudioTrack audioTrack = new AudioTrack.Builder()
-						.setAudioAttributes(new AudioAttributes.Builder()
-								.setUsage(AudioAttributes.USAGE_UNKNOWN)
-								.setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
-								.build())
-						.setAudioFormat(new AudioFormat.Builder()
-								.setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-								.setSampleRate(SAMPLE_RATE)
-								.setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-								.build())
-						.setBufferSizeInBytes(bufferSizeInBytes)
-						.build();
-
 				TLog.d("AudioTrack再生開始 5s");
-				audioTrack.play();
+				mAudioTrack.play();
 				/* カウントアップ表示 */
 				new Thread(() -> {
-					for(int lpct = 0; lpct <= 5; lpct++) {
+					for(int lpct = 0; lpct <= SOUND_TIME; lpct++) {
 						int finalLpct = lpct;
 						runOnUiThread(() -> { ((TextView)findViewById(R.id.txtTimer)).setText(MessageFormat.format("{0}s", finalLpct));});
 						try { Thread.sleep(1000); } catch(InterruptedException e) { e.printStackTrace();}
 					}
 				}).start();
-				for (int lpct = 0; lpct < 5; lpct++)	/* 5秒程度鳴らす */
-					audioTrack.write(mSineWaves.get(FREQ), 0, SAMPLE_RATE);
+				for (int lpct = 0; lpct < SOUND_TIME; lpct++)	/* 5秒程度鳴らす */
+					mAudioTrack.write(mSineWaves.get(FREQ), 0, SAMPLE_RATE, AudioTrack.WRITE_BLOCKING);
 				TLog.d("AudioTrack再生停止");
-				audioTrack.stop();
-				audioTrack.flush();
+				mAudioTrack.stop();
+				mAudioTrack.flush();
 				TLog.d("AudioTrack終了処理");
 			}).start();
 		};
@@ -173,76 +169,61 @@ public class MainActivity extends AppCompatActivity {
 
 			new Thread(() -> {
 				/* AudioTrack停止 */
-				TLog.d("AudioTrack初期化");
-				TLog.d("new AudioTrack");
-				AudioTrack audioTrack = new AudioTrack.Builder()
-						.setAudioAttributes(new AudioAttributes.Builder()
-								.setUsage(AudioAttributes.USAGE_UNKNOWN)
-								.setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
-								.build())
-						.setAudioFormat(new AudioFormat.Builder()
-								.setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-								.setSampleRate(SAMPLE_RATE)
-								.setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-								.build())
-						.setBufferSizeInBytes(bufferSizeInBytes)
-						.build();
-
 				TLog.d("AudioTrack再生開始 5s");
-				audioTrack.play();
+				mAudioTrack.play();
 				/* ドレミ */
-				audioTrack.write(mSineWaves.get(HEXDO), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXRE), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXMI), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXFA), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXMI), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXRE), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXDO), 0, SAMPLE_RATE);
+				mAudioTrack.write(mSineWaves.get(HEXDO), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXRE), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXMI), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXFA), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXMI), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXRE), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXDO), 0, SAMPLE_RATE, AudioTrack.WRITE_BLOCKING);
 				/* ドレミ(和音) */
-				audioTrack.write(mSineWaves.get(HEXDOMI), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXREFA), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXMISO), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXFARA), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXMISO), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXREFA), 0, SAMPLE_RATE/2);
-				audioTrack.write(mSineWaves.get(HEXDOMI), 0, SAMPLE_RATE);
+				mAudioTrack.write(mSineWaves.get(HEXDOMI), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXREFA), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXMISO), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXFARA), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXMISO), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXREFA), 0, SAMPLE_RATE/2, AudioTrack.WRITE_BLOCKING);
+				mAudioTrack.write(mSineWaves.get(HEXDOMI), 0, SAMPLE_RATE, AudioTrack.WRITE_BLOCKING);
 				TLog.d("AudioTrack再生停止");
-				audioTrack.stop();
-				audioTrack.flush();
+				mAudioTrack.stop();
+				mAudioTrack.flush();
 				TLog.d("AudioTrack終了処理");
 			}).start();
 		});
 	}
 
 	/* 1秒分のサイン波データを生成 */
-	private static short[] createSineWave(int freq, int amplitude) {
-		short[] retSineWave = new short[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
+	private static float[] createSineWave(int freq, int amplitude) {
+		float[] retSineWave = new float[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
 
 		for (int i = 0; i < SAMPLE_RATE; i++) {
 			float currentSec = i * SEC_PER_SAMPLEPOINT; /* 現在位置の経過秒数 */
 			/* y(t) = Amp * sin(2π * f * t) */
-			double val = amplitude * Math.sin(2.0 * Math.PI * freq * currentSec);
-			retSineWave[i] = (short)val;
+			double val = Math.sin(2.0 * Math.PI * freq * currentSec);
+			retSineWave[i] = (float)val;
 		}
 		return retSineWave;
 	}
 
 	/* 1秒分のサイン波データを生成(音波の合成版) */
-	private static short[] createSineWave(short[] orgwave, int freq, int amplitude) {
-		short[] retSineWave = new short[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
+	private static float[] createSineWave(float[] orgwave, int freq, int amplitude) {
+		float[] retSineWave = new float[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
 
 		for (int i = 0; i < SAMPLE_RATE; i++) {
 			float currentSec = i * SEC_PER_SAMPLEPOINT; /* 現在位置の経過秒数 */
 			/* y(t) = Amp * sin(2π * f * t) */
 			double val = amplitude * Math.sin(2.0 * Math.PI * freq * currentSec);
-			retSineWave[i] += orgwave[i] + (short)val;
+			retSineWave[i] += orgwave[i] + (float)val;
 		}
 		return retSineWave;
 	}
 
 	/* 1秒分のサイン波データを生成 */
-	private static short[] createSineWaveChord(int freq1, int amplitude1, int freq2, int amplitude2) {
-		short[] wavebase = createSineWave(freq1, amplitude1);
+	private static float[] createSineWaveChord(int freq1, int amplitude1, int freq2, int amplitude2) {
+		float[] wavebase = createSineWave(freq1, amplitude1);
 		return createSineWave(wavebase, freq2, amplitude2);
 	}
 
