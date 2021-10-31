@@ -54,22 +54,22 @@ public class MainActivity extends AppCompatActivity {
 	private static final int HEXSOMI = 12;
 	private static final int HEXRARE = 13;
 	private static final int HEXSIRE = 14;
-	final int bufferSizeInBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT);
+	final int bufferSizeInBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
 	AudioTrack mAudioTrack = new AudioTrack.Builder()
 			.setAudioAttributes(new AudioAttributes.Builder()
 					.setUsage(AudioAttributes.USAGE_UNKNOWN)
 					.setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
 					.build())
 			.setAudioFormat(new AudioFormat.Builder()
-					.setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+					.setEncoding(AudioFormat.ENCODING_PCM_16BIT)
 					.setSampleRate(SAMPLE_RATE)
 					.setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
 					.build())
 			.setBufferSizeInBytes(bufferSizeInBytes)
 			.build();
-	private static final Map<Integer, float[]> mSineWaves;
+	private static final Map<Integer, short[]> mSineWaves;
 	static {
-		Map<Integer, float[]> tmpmap = new HashMap<Integer, float[]>();
+		Map<Integer, short[]> tmpmap = new HashMap<Integer, short[]>();
 		tmpmap.put(  280, createSineWave(  280, AMP));
 		tmpmap.put(  400, createSineWave(  400, AMP));
 		tmpmap.put(  800, createSineWave(  800, AMP));
@@ -196,34 +196,34 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	/* 1秒分のサイン波データを生成 */
-	private static float[] createSineWave(int freq, int amplitude) {
-		float[] retSineWave = new float[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
+	private static short[] createSineWave(int freq, int amplitude) {
+		short[] retSineWave = new short[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
 
 		for (int i = 0; i < SAMPLE_RATE; i++) {
-			float currentSec = i * SEC_PER_SAMPLEPOINT; /* 現在位置の経過秒数 */
+			double currentSec = i * SEC_PER_SAMPLEPOINT; /* 現在位置の経過秒数 */
 			/* y(t) = Amp * sin(2π * f * t) */
-			double val = Math.sin(2.0 * Math.PI * freq * currentSec);
-			retSineWave[i] = (float)val;
+			double val = amplitude * Math.sin(2.0 * Math.PI * freq * currentSec);
+			retSineWave[i] = (short)val;
 		}
 		return retSineWave;
 	}
 
 	/* 1秒分のサイン波データを生成(音波の合成版) */
-	private static float[] createSineWave(float[] orgwave, int freq, int amplitude) {
-		float[] retSineWave = new float[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
+	private static short[] createSineWave(short[] orgwave, int freq, int amplitude) {
+		short[] retSineWave = new short[SAMPLE_RATE]; /* 1秒分のバッファを確保 */
 
 		for (int i = 0; i < SAMPLE_RATE; i++) {
-			float currentSec = i * SEC_PER_SAMPLEPOINT; /* 現在位置の経過秒数 */
+			double currentSec = i * SEC_PER_SAMPLEPOINT; /* 現在位置の経過秒数 */
 			/* y(t) = Amp * sin(2π * f * t) */
 			double val = amplitude * Math.sin(2.0 * Math.PI * freq * currentSec);
-			retSineWave[i] += orgwave[i] + (float)val;
+			retSineWave[i] += orgwave[i] + (short)val;
 		}
 		return retSineWave;
 	}
 
 	/* 1秒分のサイン波データを生成 */
-	private static float[] createSineWaveChord(int freq1, int amplitude1, int freq2, int amplitude2) {
-		float[] wavebase = createSineWave(freq1, amplitude1);
+	private static short[] createSineWaveChord(int freq1, int amplitude1, int freq2, int amplitude2) {
+		short[] wavebase = createSineWave(freq1, amplitude1);
 		return createSineWave(wavebase, freq2, amplitude2);
 	}
 
